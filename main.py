@@ -1,0 +1,5 @@
+from fastapi import FastAPI # [cite: 38]
+app = FastAPI() # [cite: 39]
+@app.get("/") # [cite: 40]
+async def root(): # [cite: 41]
+  return {"message": "Hello World"} # [cite: 42]
