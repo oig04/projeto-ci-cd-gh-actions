@@ -4,9 +4,6 @@ on:
   push:
     branches: [ main ]
 
-permissions:
-  contents: write
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -31,24 +28,18 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do Repositório
+      - name: Checkout do Repositório de Manifestos
         uses: actions/checkout@v3
-
-      - name: 1. DEBUG - Ver arquivo ANTES da alteração
-        run: |
-          echo "--- Conteúdo do deployment.yaml ANTES ---"
-          cat deployment.yaml
-          echo "----------------------------------------"
+        with:
+          repository: oig04/projeto-ci-cd-gh-actions-manifests
+          # A chave privada que configuramos como secret
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # O branch que será alterado no repositório de manifestos
+          ref: main
 
       - name: Atualizar a tag da imagem no Deployment
         run: |
           sed -i 's|\(image: oig04/hello-app:\).*|\1${{ github.sha }}|' deployment.yaml
-
-      - name: 1. DEBUG - Ver arquivo ANTES da alteração
-        run: |
-          echo "--- Conteúdo do deployment.yaml ANTES ---"
-          cat deployment.yaml
-          echo "----------------------------------------"
 
       - name: Commit e Push da alteração
         run: |
