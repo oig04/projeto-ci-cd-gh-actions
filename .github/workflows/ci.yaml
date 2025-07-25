@@ -34,9 +34,21 @@ jobs:
       - name: Checkout do Repositório
         uses: actions/checkout@v3
 
+      - name: 1. DEBUG - Ver arquivo ANTES da alteração
+        run: |
+          echo "--- Conteúdo do deployment.yaml ANTES ---"
+          cat deployment.yaml
+          echo "----------------------------------------"
+
       - name: Atualizar a tag da imagem no Deployment
         run: |
           sed -i 's|\(image: oig04/hello-app:\).*|\1${{ github.sha }}|' deployment.yaml
+
+      - name: 1. DEBUG - Ver arquivo ANTES da alteração
+        run: |
+          echo "--- Conteúdo do deployment.yaml ANTES ---"
+          cat deployment.yaml
+          echo "----------------------------------------"
 
       - name: Commit e Push da alteração
         run: |
