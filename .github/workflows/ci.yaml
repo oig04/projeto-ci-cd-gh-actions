@@ -28,27 +28,11 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: DEBUG - Testar Conexão SSH
-        env:
-          # Carrega a chave privada para o ambiente do passo
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          # Configura a chave SSH para ser usada pelo cliente SSH
-          mkdir -p ~/.ssh/
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          # Adiciona o github.com aos hosts conhecidos
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          # Tenta conectar ao GitHub com modo verbose (-v) para nos dar um log detalhado
-          ssh -T -v git@github.com
-
       - name: Checkout do Repositório de Manifestos
         uses: actions/checkout@v3
         with:
           repository: oig04/projeto-ci-cd-gh-actions-manifests
-          # A chave privada que configuramos como secret
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # O branch que será alterado no repositório de manifestos
           ref: main
 
       - name: Atualizar a tag da imagem no Deployment
