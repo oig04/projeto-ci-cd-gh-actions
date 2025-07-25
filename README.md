@@ -70,6 +70,7 @@ O modelo GitOps exige dois repositórios:
 
 1.  **Repositório da Aplicação:** Crie um repositório público no GitHub chamado `projeto-ci-cd-gh-actions`.
 2.  **Repositório de Manifestos:** Crie um segundo repositório público chamado `projeto-ci-cd-gh-actions-manifests`.
+[Acesse o repositório de manifestos](https://github.com/oig04/projeto-ci-cd-gh-actions-manifests)
 3.  Clone ambos os repositórios para a sua máquina local.
 
 ### **Fase 2: Criação dos Artefatos do Projeto**
