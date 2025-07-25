@@ -1,157 +1,198 @@
-# **Projeto: CI/CD com GitHub Actions e ArgoCD**
+# **Projeto de Estágio: Pipeline CI/CD com GitOps e ArgoCD**
 
-[cite\_start]Este projeto implementa um pipeline completo e automatizado de CI/CD (Integração Contínua e Entrega Contínua) para uma aplicação web simples desenvolvida em FastAPI. [cite: 7, 15] [cite\_start]O objetivo é automatizar todo o ciclo de vida da aplicação, desde o commit do código até a implantação em um ambiente Kubernetes, utilizando práticas modernas de GitOps. [cite: 12, 15]
+**Autor:** Giovanna Freitas | **Programa:** Programa de Bolsas - DevSecOps da Compass UOL
 
-## **Arquitetura do Pipeline**
+## **Resumo Executivo**
 
-[cite\_start]O fluxo de trabalho garante que o repositório Git seja a única "fonte da verdade"[cite: 12], tanto para o código da aplicação quanto para a configuração da infraestrutura.
+Este documento serve como um relatório técnico e um guia de implementação para um pipeline de automação CI/CD. Utilizando GitHub Actions, Docker, Kubernetes e ArgoCD, foi construído um fluxo de trabalho baseado nos princípios de **GitOps**, onde o repositório Git atua como a única fonte da verdade para o estado desejado da aplicação. O objetivo principal foi automatizar o ciclo completo de desenvolvimento, build, deploy e execução de uma aplicação FastAPI, garantindo velocidade, segurança e consistência nas entregas.
+
+## **1. Visão Geral e Arquitetura**
+
+A arquitetura implementada visa a automação total do processo de deploy. Qualquer alteração de código enviada ao repositório da aplicação dispara um processo que resulta na atualização automática do ambiente Kubernetes, sem necessidade de intervenção manual.
+
+Este modelo é fundamentado na filosofia **GitOps**, onde o estado do sistema é descrito de forma declarativa em um repositório Git. Os principais benefícios são:
+
+  * **Auditabilidade:** Todo o histórico de mudanças na infraestrutura fica registrado no Git.
+  * **Consistência e Reprodutibilidade:** O ambiente pode ser recriado de forma confiável a partir do repositório.
+  * **Segurança Aprimorada:** As alterações são revisadas e aprovadas via Pull Requests.
+
+#### **Diagrama do Fluxo de Trabalho**
 
 ```mermaid
 graph TD
     subgraph "Ambiente Local"
-        A[Desenvolvedor] -- 1. git push --> B{Repo: projeto-ci-cd-gh-actions};
+        A[Desenvolvedor] -- 1. git push --> B{Repo da Aplicação};
     end
 
-    subgraph "Automação GitHub"
-        B -- 2. Aciona --> C[GitHub Actions];
+    subgraph "Automação GitHub (CI)"
+        B -- 2. Aciona Workflow --> C[GitHub Actions];
         C -- 3. Build & Push da Imagem --> D[(Docker Hub)];
-        C -- 4. Atualiza Manifesto com nova tag --> E{Repo: projeto-ci-cd-gh-actions-manifests};
+        C -- 4. Atualiza Manifesto com nova tag --> E{Repo de Manifestos};
     end
 
-    subgraph "Cluster Kubernetes"
+    subgraph "Cluster Kubernetes (CD)"
         F[ArgoCD] -- 5. Detecta Mudança no Git --> E;
         F -- 6. Sincroniza e Aplica Deploy --> G([Cluster Kubernetes]);
         G -- Roda --> H(Aplicação FastAPI);
     end
-
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style G fill:#3670f4,stroke:#333,stroke-width:2px
 ```
 
-### **Tecnologias Utilizadas**
+## **2. Tecnologias Aplicadas**
 
-  * **Aplicação:** FastAPI
-  * **Containerização:** Docker
-  * [cite\_start]**CI/CD:** GitHub Actions [cite: 6, 9]
-  * [cite\_start]**Registro de Imagem:** Docker Hub [cite: 15]
-  * [cite\_start]**Orquestração:** Kubernetes [cite: 12]
-  * [cite\_start]**Ambiente K8s Local:** Kind / Rancher Desktop [cite: 26]
-  * [cite\_start]**GitOps Controller:** ArgoCD [cite: 9, 12]
+| Ferramenta | Papel no Projeto |
+| :--- | :--- |
+| **FastAPI** | Framework Python para a construção da aplicação web. |
+| **Docker** | Plataforma de containerização para empacotar a aplicação e suas dependências. |
+| **GitHub Actions** | [cite\_start]Orquestrador de CI para automatizar os processos de build, teste e publicação da imagem. [cite: 10] |
+| **Docker Hub** | Registro de contêiner para armazenar as imagens Docker versionadas. |
+| **Kubernetes (Kind)** | Plataforma de orquestração para executar a aplicação em contêineres de forma escalável. |
+| **ArgoCD** | [cite\_start]Ferramenta de GitOps que implementa a entrega contínua, sincronizando o estado do cluster com o repositório de manifestos. [cite: 12] |
 
-## **Estrutura de Repositórios**
+-----
 
-A abordagem utiliza dois repositórios Git para separar as responsabilidades:
+## **Guia de Implementação (Passo a Passo)**
 
-1.  **`projeto-ci-cd-gh-actions`**:
+Esta seção detalha todas as etapas para recriar este projeto do zero.
 
-      * [cite\_start]Contém o código-fonte da aplicação FastAPI (`main.py`). [cite: 34]
-      * [cite\_start]Inclui o `Dockerfile` para construir a imagem da aplicação. [cite: 35]
-      * [cite\_start]Armazena o workflow do GitHub Actions (`.github/workflows/ci.yaml`). [cite: 46]
+### **Fase 1: Preparação do Ambiente e Repositórios**
 
-2.  **`projeto-ci-cd-gh-actions-manifests`**:
+#### **1.1. Pré-requisitos**
 
-      * [cite\_start]Armazena os manifestos de configuração do Kubernetes (`deployment.yaml`, `service.yaml`). [cite: 36, 61]
-      * [cite\_start]Funciona como a "fonte da verdade" que o ArgoCD monitora para realizar os deploys. [cite: 62]
+Garanta que você tenha todas as ferramentas e contas necessárias:
 
-## **Arquivos do Projeto**
+  * Conta no GitHub com um [token de acesso pessoal](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) com escopo `repo` e `workflow`.
+  * Conta no Docker Hub com um token de acesso gerado.
+  * Ferramentas de linha de comando: `git`, `docker`, `python3`, `kubectl`, `kind`.
 
-Abaixo estão os conteúdos de todos os arquivos necessários para a execução do projeto.
+#### **1.2. Criação dos Repositórios**
 
-\<details\>
-\<summary\>\<strong\>main.py (Aplicação FastAPI)\</strong\>\</summary\>
+O modelo GitOps exige dois repositórios:
+
+1.  **Repositório da Aplicação:** Crie um repositório público no GitHub chamado `projeto-ci-cd-gh-actions`.
+2.  **Repositório de Manifestos:** Crie um segundo repositório público chamado `projeto-ci-cd-gh-actions-manifests`.
+3.  Clone ambos os repositórios para a sua máquina local.
+
+### **Fase 2: Criação dos Artefatos do Projeto**
+
+Nesta fase, criamos todos os arquivos necessários.
+
+#### **2.1. Código da Aplicação**
+
+Dentro da pasta `projeto-ci-cd-gh-actions`, crie o arquivo `main.py`:
 
 ```python
-[cite_start]from fastapi import FastAPI # [cite: 38]
+from fastapi import FastAPI
 
-[cite_start]app = FastAPI() # [cite: 39]
+app = FastAPI()
 
-
-[cite_start]@app.get("/") # [cite: 40]
-[cite_start]async def root(): # [cite: 41]
-    [cite_start]return {"message": "Hello World"} # [cite: 42]
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 ```
 
-\</details\>
+#### **2.2. Dockerfile**
 
-\<details\>
-\<summary\>\<strong\>Dockerfile\</strong\>\</summary\>
+Na mesma pasta, crie o arquivo `Dockerfile` para containerizar a aplicação:
 
 ```dockerfile
 # Usar uma imagem base oficial do Python
 FROM python:3.9-slim
-
-# Definir o diretório de trabalho dentro do container
+# Definir o diretório de trabalho
 WORKDIR /app
-
-# Copiar os arquivos da aplicação para o diretório de trabalho
+# Copiar os arquivos da aplicação
 COPY ./main.py /app/
-
-# Instalar as dependências necessárias
+# Instalar as dependências
 RUN pip install fastapi uvicorn
-
 # Expor a porta que a aplicação vai rodar
 EXPOSE 8000
-
-# Comando para iniciar a aplicação quando o container for executado
+# Comando para iniciar a aplicação
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-\</details\>
+#### **2.3. Manifestos Kubernetes**
 
-\<details\>
-\<summary\>\<strong\>.github/workflows/ci.yaml (GitHub Actions)\</strong\>\</summary\>
+Dentro da pasta `projeto-ci-cd-gh-actions-manifests`, crie dois arquivos:
+
+  * `deployment.yaml`:
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: hello-app
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: hello-app
+      template:
+        metadata:
+          labels:
+            app: hello-app
+        spec:
+          containers:
+          - name: hello-app
+            image: SEU_USUARIO_DOCKERHUB/projeto-ci-cd-gh-actions:latest
+            ports:
+            - containerPort: 8000
+    ```
+
+  * `service.yaml`:
+
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: hello-app-service
+    spec:
+      selector:
+        app: hello-app
+      ports:
+        - protocol: TCP
+          port: 8080
+          targetPort: 8000
+    ```
+
+  * Adicione e envie estes dois arquivos para o repositório de manifestos: `git add .`, `git commit -m "feat: manifestos iniciais"`, `git push`.
+
+#### **2.4. Workflow de CI/CD (GitHub Actions)**
+
+Dentro do repositório da aplicação (`projeto-ci-cd-gh-actions`), crie a estrutura de pastas `.github/workflows/` e, dentro dela, o arquivo `ci.yaml`:
 
 ```yaml
 name: CI-CD Pipeline
-
-# Aciona o workflow em cada push para a branch main
 on:
   push:
     branches: [ main ]
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      # 1. Faz o checkout do código da aplicação
       - name: Checkout da Aplicação
         uses: actions/checkout@v3
-
-      # 2. Faz o login no Docker Hub usando os secrets
       - name: Login no Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # 3. Builda a imagem Docker e envia para o Docker Hub
       - name: Build e Push da Imagem Docker
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          # A tag da imagem será o hash do commit, garantindo uma versão única
           tags: SEU_USUARIO_DOCKERHUB/projeto-ci-cd-gh-actions:${{ github.sha }}
-
   update-manifest:
-    # Garante que este job só rode após o sucesso do 'build-and-push'
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # 1. Faz o checkout do repositório de manifestos
       - name: Checkout do Repositório de Manifestos
         uses: actions/checkout@v3
         with:
           repository: SEU_USUARIO_GITHUB/projeto-ci-cd-gh-actions-manifests
-          # Usa a chave SSH configurada nos secrets para ter permissão de escrita
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      # 2. Atualiza a tag da imagem no arquivo deployment.yaml
       - name: Atualizar a tag da imagem no Deployment
         run: |
           sed -i 's|image: .*|image: SEU_USUARIO_DOCKERHUB/projeto-ci-cd-gh-actions:${{ github.sha }}|g' deployment.yaml
-
-      # 3. Faz o commit e push da alteração no repositório de manifestos
       - name: Commit e Push da alteração
         run: |
           git config --global user.name 'GitHub Actions'
@@ -161,97 +202,81 @@ jobs:
           git push
 ```
 
-\</details\>
+### **Fase 3: Configuração da Automação e Deploy**
 
-\<details\>
-\<summary\>\<strong\>deployment.yaml\</strong\>\</summary\>
+#### **3.1. Configuração de Segredos e Chaves**
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hello-app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: hello-app
-  template:
-    metadata:
-      labels:
-        app: hello-app
-    spec:
-      containers:
-      - name: hello-app
-        # IMPORTANTE: Substitua pelo seu usuário e nome da imagem.
-        # A tag será atualizada automaticamente pelo pipeline.
-        image: SEU_USUARIO_DOCKERHUB/projeto-ci-cd-gh-actions:latest
-        ports:
-        - containerPort: 8000
-```
+1.  **Chave SSH:** Gere um par de chaves com `ssh-keygen -t rsa -b 4096 -f github-actions-key`.
+2.  **Deploy Key:** No repositório de **manifestos**, vá em `Settings > Deploy keys`, clique em `Add deploy key`, cole o conteúdo da chave **pública** (`github-actions-key.pub`) e marque a opção "Allow write access".
+3.  **Secrets:** No repositório da **aplicação**, vá em `Settings > Secrets and variables > Actions` e crie os três segredos necessários: `DOCKER_USERNAME`, `DOCKER_PASSWORD` e `SSH_PRIVATE_KEY` (com o conteúdo da chave privada).
 
-\</details\>
+#### **3.2. Primeiro Push e Verificação do CI**
 
-\<details\>
-\<summary\>\<strong\>service.yaml\</strong\>\</summary\>
+1.  No repositório da aplicação, adicione e envie todos os arquivos: `git add .`, `git commit -m "feat: adiciona aplicacao e pipeline de CI"`, `git push`.
+2.  Acesse a aba "Actions" no GitHub para verificar a execução bem-sucedida do workflow.
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: hello-app-service
-spec:
-  selector:
-    app: hello-app
-  ports:
-    - protocol: TCP
-      # Porta que o serviço expõe no cluster
-      port: 8080
-      # Porta que a aplicação está ouvindo dentro do container
-      targetPort: 8000
-```
+> **Ponto de Verificação e Evidência:**
 
-\</details\>
+> 1.  *O sucesso do workflow na aba "Actions" do GitHub.*
+> 2.  *A nova imagem publicada no seu repositório do Docker Hub.*
+> 3.  *O commit automático feito pela Action no histórico do repositório de manifestos.*
+<p align="center"><img src="./imagens/1-pagina-inicial-argocd.png" width="600"/></p>
+<p align="center"><img src="./imagens/1.2-solicitacao-de-senha-para-o-argocd.png" width="600"/></p>
+<p align="center"><img src="./imagens/2-pagina-pos-login-argocd.png" width="600"/></p>
+<p align="center"><img src="./imagens/3-criando-a-aplicacao-no-argocd.png" width="600"/></p>
 
-## **Guia de Execução e Verificação**
+#### **3.3. Preparação do Ambiente Kubernetes**
 
-Siga os passos abaixo para configurar e testar o projeto.
+1.  Crie um cluster local com `kind create cluster`.
+2.  Instale o ArgoCD no cluster:
+    ```bash
+    kubectl create namespace argocd
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    ```
+3.  Monitore a instalação com `kubectl get pods -n argocd --watch` até que todos os pods estejam `Running`.
 
-### **1. Configuração de Segredos e Chaves**
+#### **3.4. Configuração e Deploy com ArgoCD**
 
-  * [cite\_start]No repositório `projeto-ci-cd-gh-actions`, vá em `Settings > Secrets and variables > Actions` e configure os seguintes segredos[cite: 50]:
-      * [cite\_start]`DOCKER_USERNAME`: Seu usuário do Docker Hub. [cite: 52]
-      * [cite\_start]`DOCKER_PASSWORD`: Seu token de acesso do Docker Hub. [cite: 51]
-      * [cite\_start]`SSH_PRIVATE_KEY`: Chave SSH privada para dar acesso de escrita ao repositório de manifestos. [cite: 51]
-  * No repositório `projeto-ci-cd-gh-actions-manifests`, vá em `Settings > Deploy keys` e adicione a chave SSH **pública** correspondente, marcando a opção "Allow write access".
+1.  Acesse a interface do ArgoCD com `kubectl port-forward svc/argocd-server -n argocd 8080:443`.
+2.  Obtenha a senha com `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`.
+3.  Faça login em `https://localhost:8080` com o usuário `admin` e a senha obtida.
+4.  Crie uma nova aplicação no ArgoCD, apontando para o seu repositório de manifestos.
 
-### **2. Execução do Pipeline de CI**
+> **Ponto de Verificação e Evidência:**
 
-  * Faça `git push` de todos os arquivos para o repositório `projeto-ci-cd-gh-actions`.
-  * Acesse a aba "Actions" no GitHub para verificar a execução do workflow.
-  * [cite\_start]Após o sucesso, verifique se a nova imagem foi publicada no seu Docker Hub. [cite: 72]
-  * [cite\_start]Verifique também se um novo commit foi feito pelo "GitHub Actions" no repositório `projeto-ci-cd-gh-actions-manifests`, atualizando a tag da imagem. [cite: 73]
+> 1.  *O painel do ArgoCD mostrando a aplicação `hello-app` com status `Healthy` e `Synced`.*
+<p align="center"><img src="./imagens/4-criando-a-aplicacao-no-argocd-create.png" width="600"/></p>
 
-### **3. Deploy com ArgoCD**
+> 2.  *A visão em árvore detalhada dos recursos gerenciados pelo ArgoCD.*
+<p align="center"><img src="./imagens/5-aplicacao-no-argocd-criada.png" width="600"/></p>
 
-  * Acesse a interface do ArgoCD. O comando `kubectl port-forward svc/argocd-server -n argocd 8080:443` pode ser usado para isso.
-  * [cite\_start]Crie uma nova aplicação no ArgoCD, apontando para o repositório de manifestos. [cite: 64]
-  * Aguarde a aplicação ser sincronizada e ficar com o status "Healthy".
+#### **3.5. Validação Final no Cluster**
 
-### **4. Teste e Verificação Final**
+1.  Verifique os recursos criados com `kubectl get all -l app=hello-app`.
+2.  Acesse a aplicação com `kubectl port-forward svc/hello-app-service 8080:8080`.
+3.  Teste a aplicação com `curl http://localhost:8080`.
 
-  * [cite\_start]Verifique se o pod da aplicação está rodando no Kubernetes: `kubectl get pods`. [cite: 76]
-  * [cite\_start]Use o port-forward para acessar a aplicação localmente: `kubectl port-forward svc/hello-app-service 8080:8080`. [cite: 66]
-  * [cite\_start]Acesse `http://localhost:8080` no navegador ou via `curl` para ver a mensagem da API. [cite: 76]
+> **Ponto de Verificação e Evidência:**
 
-## **Entregas Esperadas**
+> 1.  *O resultado do comando `kubectl get all` mostrando o pod em execução.*
+<p align="center"><img src="./imagens/6-aplicacao-no-argocd-criada-review.png" width="600"/></p>
+> 2.  *O resultado do comando `curl` mostrando a resposta `{"message":"Hello World"}`.*
+<p align="center"><img src="./imagens/7-verificacao-no-kubernets-via-kubectl.png" width="600"/></p>
 
-[cite\_start]Checklist final com as evidências de conclusão do projeto[cite: 68]:
+## **5. Considerações de Segurança (DevSecOps)**
 
-  * [cite\_start][ ] **Link do repositório da aplicação:** `COLE SEU LINK AQUI` [cite: 70]
-  * [cite\_start][ ] **Link do repositório de manifestos:** `COLE SEU LINK AQUI` [cite: 71]
-  * [cite\_start][ ] **Print - Imagem no Docker Hub:** Captura de tela do Docker Hub mostrando a imagem publicada pelo pipeline. [cite: 72]
-  * [cite\_start][ ] **Print - Commit Automático:** Captura de tela do histórico de commits do repositório de manifestos, mostrando a atualização feita pela Action. [cite: 73]
-  * [cite\_start][ ] **Print - ArgoCD Sincronizado:** Captura de tela do painel do ArgoCD mostrando a aplicação com status "Healthy" e "Synced". [cite: 75]
-  * [cite\_start][ ] **Print - Pods em Execução:** Captura de tela do terminal com o resultado do comando `kubectl get pods`. [cite: 76]
-  * [cite\_start][ ] **Print - Resposta da Aplicação:** Captura de tela do navegador ou do `curl` mostrando a resposta da API. [cite: 76]
+  * **Gerenciamento de Segredos:** Credenciais sensíveis são gerenciadas via **GitHub Encrypted Secrets**, evitando sua exposição em código.
+  * **Imutabilidade de Imagens:** O uso de tags de imagem baseadas no hash do commit (`github.sha`) garante que cada versão da imagem seja única e imutável, fundamental para rastreabilidade e análise de vulnerabilidades.
+  * **Auditabilidade e Controle de Acesso:** O modelo GitOps fornece um log de auditoria completo (histórico do Git) para todas as mudanças no ambiente.
+
+## **6. Conclusão**
+
+Este projeto demonstrou com sucesso a criação de um pipeline CI/CD robusto e seguro. As práticas de GitOps, combinadas com GitHub Actions e ArgoCD, permitem um fluxo de desenvolvimento ágil e confiável, essencial no ecossistema DevOps moderno.
+
+> **Ponto de Verificação e Evidência:**
+<p align="center"><img src="./imagens/8-descricao-do-pod.png" width="600"/></p>
+<p align="center"><img src="./imagens/9-acessando-e-testando-a-aplicacao.png" width="600"/></p>
+<p align="center"><img src="./imagens/10-teste-do-ciclo-completo-prova-cicd.png" width="600"/></p>
+<p align="center"><img src="./imagens/11-teste-do-ciclo-completo-prova-cicd.png" width="600"/></p>
+<p align="center"><img src="./imagens/12-teste-do-ciclo-completo-prova-cicd.png" width="600"/></p>
+<p align="center"><img src="./imagens/13-verificacao-final.png" width="600"/></p>
