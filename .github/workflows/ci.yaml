@@ -36,7 +36,7 @@ jobs:
 
       - name: Atualizar a tag da imagem no Deployment
         run: |
-          sed -i 's|image: .*|image: oig04/hello-app:${{ github.sha }}|g' deployment.yaml
+          sed -i 's|\(image: oig04/hello-app:\).*|\1${{ github.sha }}|' deployment.yaml
 
       - name: Commit e Push da alteração
         run: |
